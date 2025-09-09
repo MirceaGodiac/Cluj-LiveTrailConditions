@@ -7,10 +7,14 @@ import { database } from "@/app/lib/firebaseconfig";
 
 interface Reading {
   moisture: number;
+  timestamp: number;
 }
 
 interface FirebaseReading {
-  [key: string]: Reading;
+  [key: string]: {
+    moisture: number;
+    timestamp: number;
+  };
 }
 
 const TRAILS = [
@@ -34,6 +38,7 @@ export default function Home() {
         if (data) {
           const readingsArray = Object.entries(data).map(([key, reading]) => ({
             moisture: Number(reading.moisture) || 0,
+            timestamp: reading.timestamp,
           }));
 
           setTrailReadings((prev) => ({

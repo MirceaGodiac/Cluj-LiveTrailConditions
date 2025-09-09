@@ -5,7 +5,7 @@ import Graph from "@/app/chart";
 interface SpeedometerProps {
   value: number;
   trailName: string;
-  readings: Array<{ moisture: number }>;
+  readings: Array<{ moisture: number; timestamp: number }>;
 }
 
 export default function Speedometer({
@@ -51,7 +51,12 @@ export default function Speedometer({
                 <span className="text-lg text-slate-400">%</span>
               </div>
               <div className="text-sm text-slate-400 mt-2">
-                Updated {new Date().toLocaleTimeString()}
+                Updated{" "}
+                {readings.length > 0
+                  ? new Date(
+                      readings[readings.length - 1].timestamp
+                    ).toLocaleTimeString()
+                  : "N/A"}
               </div>
             </div>
           </div>

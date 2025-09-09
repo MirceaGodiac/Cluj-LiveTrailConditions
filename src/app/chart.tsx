@@ -24,6 +24,7 @@ ChartJS.register(
 
 type Reading = {
   moisture: number;
+  timestamp: number;
 };
 
 export default function Graph({ readings }: { readings: Reading[] }) {
@@ -35,7 +36,7 @@ export default function Graph({ readings }: { readings: Reading[] }) {
   console.log("Processed moisture values:", moistureValues);
 
   const data = {
-    labels: readings.map((_, index) => `Reading ${index + 1}`),
+    labels: readings.map((r) => new Date(r.timestamp).toLocaleTimeString()),
     datasets: [
       {
         label: "Moisture Level",
