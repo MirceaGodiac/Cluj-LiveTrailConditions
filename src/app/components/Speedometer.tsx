@@ -77,7 +77,7 @@ export default function Speedometer({
             {[
               {
                 name: "Slippery",
-                range: "> 350",
+                range: "< 350",
                 color: "bg-rose-500",
               },
               {
