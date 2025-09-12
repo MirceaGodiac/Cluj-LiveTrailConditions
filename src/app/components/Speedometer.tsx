@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Graph from "@/app/chart";
 
 interface SpeedometerProps {
@@ -8,16 +9,26 @@ interface SpeedometerProps {
   readings: Array<{ moisture: number; timestamp: number }>;
 }
 
+const TIMEFRAMES = {
+  "24h": "24 Hour History",
+  "48h": "48 Hour History",
+  week: "1 Week History",
+  month: "1 Month History",
+};
+
 export default function Speedometer({
   value,
   trailName,
   readings,
 }: SpeedometerProps) {
+  const [selectedTimeframe, setSelectedTimeframe] =
+    useState<keyof typeof TIMEFRAMES>("24h");
+
   const getCondition = (val: number) => {
-    if (val <= 30) return { name: "Dry", color: "bg-amber-400" };
-    if (val <= 40) return { name: "Hero Dirt", color: "bg-emerald-500" };
-    if (val <= 50) return { name: "Wet", color: "bg-sky-500" };
-    return { name: "Slippery", color: "bg-rose-500" };
+    if (val <= 350) return { name: "Slippery", color: "bg-rose-500" };
+    if (val <= 400) return { name: "Wet", color: "bg-sky-500" };
+    if (val <= 450) return { name: "Good", color: "bg-emerald-500" };
+    return { name: "Dry", color: "bg-amber-400" };
   };
 
   const condition = getCondition(value);
@@ -48,7 +59,7 @@ export default function Speedometer({
                 <span className="text-3xl font-bold text-slate-100">
                   {value}
                 </span>
-                <span className="text-lg text-slate-400">%</span>
+                <span className="text-lg text-slate-400"></span>
               </div>
               <div className="text-sm text-slate-400 mt-2">
                 Updated{" "}
@@ -64,10 +75,26 @@ export default function Speedometer({
           {/* Condition Scale */}
           <div className="grid grid-cols-4 gap-3 mt-4">
             {[
-              { name: "Dry", range: "0-30%", color: "bg-amber-400" },
-              { name: "Hero Dirt", range: "30-40%", color: "bg-emerald-500" },
-              { name: "Wet", range: "40-50%", color: "bg-sky-500" },
-              { name: "Slippery", range: "50%+", color: "bg-rose-500" },
+              {
+                name: "Slippery",
+                range: "> 350",
+                color: "bg-rose-500",
+              },
+              {
+                name: "Wet",
+                range: "350 - 400",
+                color: "bg-sky-500",
+              },
+              {
+                name: "Good",
+                range: "400 - 450",
+                color: "bg-emerald-500",
+              },
+              {
+                name: "Dry",
+                range: "> 450",
+                color: "bg-amber-400",
+              },
             ].map((item) => (
               <div key={item.name} className="text-center">
                 <div
@@ -84,8 +111,23 @@ export default function Speedometer({
 
         {/* Graph Panel */}
         <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700/50">
-          <div className="text-sm text-slate-400 uppercase tracking-wide mb-3">
-            24 Hour History
+          <div className="flex justify-between items-center mb-3">
+            <div className="text-sm text-slate-400 uppercase tracking-wide">
+              {TIMEFRAMES[selectedTimeframe]}
+            </div>
+            <select
+              value={selectedTimeframe}
+              onChange={(e) =>
+                setSelectedTimeframe(e.target.value as keyof typeof TIMEFRAMES)
+              }
+              className="bg-slate-800 text-slate-300 text-sm rounded px-2 py-1 border border-slate-700"
+            >
+              {Object.entries(TIMEFRAMES).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="h-[150px]">
             {readings.length > 0 ? (
