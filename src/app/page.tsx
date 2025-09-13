@@ -19,18 +19,10 @@ interface FirebaseReading {
 
 const TRAILS = [{ id: "1", name: "Livada Tech Trail Upper" }];
 
-const TIMEFRAMES = {
-  "24h": 24 * 60 * 60 * 1000,
-  "48h": 48 * 60 * 60 * 1000,
-  week: 7 * 24 * 60 * 60 * 1000,
-  month: 30 * 24 * 60 * 60 * 1000,
-};
-
 export default function Home() {
   const [trailReadings, setTrailReadings] = useState<{
     [key: string]: Reading[];
   }>({});
-  const [timeframe, setTimeframe] = useState<keyof typeof TIMEFRAMES>("24h");
 
   useEffect(() => {
     const unsubscribes = TRAILS.map((trail) => {
@@ -55,12 +47,6 @@ export default function Home() {
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }, []);
 
-  const filterReadings = (readings: Reading[]) => {
-    const now = Date.now();
-    const timeframeMs = TIMEFRAMES[timeframe];
-    return readings.filter((reading) => now - reading.timestamp <= timeframeMs);
-  };
-
   return (
     <main className="min-h-screen bg-black py-8 px-4">
       <div className="max-w-7xl mx-auto">
@@ -71,12 +57,9 @@ export default function Home() {
           {TRAILS.map((trail) => (
             <Speedometer
               key={trail.id}
-              value={
-                filterReadings(trailReadings[trail.id] || []).slice(-1)[0]
-                  ?.moisture || 0
-              }
+              value={trailReadings[trail.id]?.slice(-1)[0]?.moisture || 0}
               trailName={trail.name}
-              readings={filterReadings(trailReadings[trail.id] || [])}
+              readings={trailReadings[trail.id] || []}
             />
           ))}
         </div>

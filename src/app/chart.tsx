@@ -27,7 +27,21 @@ type Reading = {
   timestamp: number;
 };
 
-export default function Graph({ readings }: { readings: Reading[] }) {
+export default function Graph({
+  readings,
+  timeframe,
+}: {
+  readings: Reading[];
+  timeframe: string;
+}) {
+  console.log(
+    `[Chart] Rendering chart for timeframe ${timeframe} with ${readings.length} readings:`,
+    readings.map((r) => ({
+      moisture: r.moisture,
+      time: new Date(r.timestamp).toLocaleString(),
+    }))
+  );
+
   const moistureValues = readings.map((r) => {
     const value = parseFloat(r.moisture.toString());
     return isNaN(value) ? 0 : value;
@@ -35,8 +49,16 @@ export default function Graph({ readings }: { readings: Reading[] }) {
 
   console.log("Processed moisture values:", moistureValues);
 
+  const formatTimestamp = (timestamp: number) => {
+    const date = new Date(timestamp);
+    if (timeframe === "week" || timeframe === "month") {
+      return date.toLocaleDateString();
+    }
+    return date.toLocaleTimeString();
+  };
+
   const data = {
-    labels: readings.map((r) => new Date(r.timestamp).toLocaleTimeString()),
+    labels: readings.map((r) => formatTimestamp(r.timestamp)),
     datasets: [
       {
         label: "Moisture Level",
@@ -59,6 +81,14 @@ export default function Graph({ readings }: { readings: Reading[] }) {
       },
       title: {
         display: false,
+      },
+    },
+    scales: {
+      x: {
+        ticks: {
+          maxRotation: 45,
+          minRotation: 45,
+        },
       },
     },
   };

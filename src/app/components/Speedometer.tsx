@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Graph from "@/app/chart";
 
 interface SpeedometerProps {
@@ -10,19 +10,37 @@ interface SpeedometerProps {
 }
 
 const TIMEFRAMES = {
-  "24h": "24 Hour History",
-  "48h": "48 Hour History",
-  week: "1 Week History",
-  month: "1 Month History",
+  "24h": 24 * 60 * 60 * 1000,
+  "48h": 48 * 60 * 60 * 1000,
+  week: 7 * 24 * 60 * 60 * 1000,
 };
 
 export default function Speedometer({
-  value,
+  value: initialValue,
   trailName,
   readings,
 }: SpeedometerProps) {
   const [selectedTimeframe, setSelectedTimeframe] =
     useState<keyof typeof TIMEFRAMES>("24h");
+
+  const filteredReadings = useMemo(() => {
+    const now = Date.now();
+    const timeframeMs = TIMEFRAMES[selectedTimeframe];
+    const filtered = readings.filter(
+      (reading) => now - reading.timestamp <= timeframeMs
+    );
+    console.log(
+      `[Speedometer] Filtered readings for ${selectedTimeframe}:`,
+      filtered
+    );
+    return filtered;
+  }, [readings, selectedTimeframe]); // added selectedTimeframe to dependencies
+
+  const latestValue = useMemo(() => {
+    return filteredReadings.length > 0
+      ? filteredReadings[filteredReadings.length - 1].moisture
+      : initialValue;
+  }, [filteredReadings, initialValue]);
 
   const getCondition = (val: number) => {
     if (val <= 350) return { name: "Slippery", color: "bg-rose-500" };
@@ -31,7 +49,7 @@ export default function Speedometer({
     return { name: "Dry", color: "bg-amber-400" };
   };
 
-  const condition = getCondition(value);
+  const condition = getCondition(latestValue);
 
   return (
     <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-700/50 p-6">
@@ -57,15 +75,15 @@ export default function Speedometer({
             <div className="flex flex-col items-end ml-4">
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold text-slate-100">
-                  {value}
+                  {latestValue}
                 </span>
                 <span className="text-lg text-slate-400"></span>
               </div>
               <div className="text-sm text-slate-400 mt-2">
                 Updated{" "}
-                {readings.length > 0
+                {filteredReadings.length > 0
                   ? new Date(
-                      readings[readings.length - 1].timestamp
+                      filteredReadings[filteredReadings.length - 1].timestamp
                     ).toLocaleTimeString()
                   : "N/A"}
               </div>
@@ -113,7 +131,7 @@ export default function Speedometer({
         <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700/50">
           <div className="flex justify-between items-center mb-3">
             <div className="text-sm text-slate-400 uppercase tracking-wide">
-              {TIMEFRAMES[selectedTimeframe]}
+              {Object.keys(TIMEFRAMES).find((key) => key === selectedTimeframe)}
             </div>
             <select
               value={selectedTimeframe}
@@ -122,16 +140,20 @@ export default function Speedometer({
               }
               className="bg-slate-800 text-slate-300 text-sm rounded px-2 py-1 border border-slate-700"
             >
-              {Object.entries(TIMEFRAMES).map(([key, label]) => (
+              {Object.keys(TIMEFRAMES).map((key) => (
                 <option key={key} value={key}>
-                  {label}
+                  {key}
                 </option>
               ))}
             </select>
           </div>
           <div className="h-[150px]">
-            {readings.length > 0 ? (
-              <Graph readings={readings} />
+            {filteredReadings.length > 0 ? (
+              <Graph
+                readings={filteredReadings}
+                key={selectedTimeframe}
+                timeframe={selectedTimeframe}
+              />
             ) : (
               <div className="flex h-full items-center justify-center text-slate-400">
                 Loading data...
