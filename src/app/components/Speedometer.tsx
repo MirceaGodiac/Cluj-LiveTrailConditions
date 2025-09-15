@@ -58,6 +58,16 @@ export default function Speedometer({
 
   const condition = getCondition(latestValue);
 
+  const getNextUpdateTime = (lastTimestamp: number) => {
+    const nextUpdate = lastTimestamp + 60 * 60 * 1000; // 1 hour after last update
+    const timeUntilNext = nextUpdate - Date.now();
+    const minutesUntilNext = Math.max(
+      0,
+      Math.ceil(timeUntilNext / (60 * 1000))
+    );
+    return minutesUntilNext;
+  };
+
   return (
     <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-700/50 p-4 sm:p-6">
       <div className="space-y-4 sm:space-y-6">
@@ -100,13 +110,26 @@ export default function Speedometer({
                     <span>Higher →</span>
                   </div>
                 </div>
-                <div className="text-xs text-slate-400">
-                  Last Updated{" "}
-                  {filteredReadings.length > 0
-                    ? new Date(
+                <div className="flex flex-col items-center text-xs text-slate-400">
+                  <div>
+                    Last Updated{" "}
+                    {filteredReadings.length > 0
+                      ? new Date(
+                          filteredReadings[
+                            filteredReadings.length - 1
+                          ].timestamp
+                        ).toLocaleTimeString()
+                      : "N/A"}
+                  </div>
+                  {filteredReadings.length > 0 && (
+                    <div className="text-slate-500">
+                      Next update in approximately{" "}
+                      {getNextUpdateTime(
                         filteredReadings[filteredReadings.length - 1].timestamp
-                      ).toLocaleTimeString()
-                    : "N/A"}
+                      )}{" "}
+                      minutes
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
