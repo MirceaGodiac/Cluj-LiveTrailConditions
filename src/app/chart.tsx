@@ -54,7 +54,7 @@ export default function Graph({
     if (timeframe === "week" || timeframe === "month") {
       return date.toLocaleDateString();
     }
-    return date.toLocaleTimeString();
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   const data = {
