@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { database } from '@/app/lib/firebaseconfig';
-import { ref, push, serverTimestamp } from 'firebase/database';
+import { adminDb } from '@/app/lib/firebase-admin';
 
 // Validate API key from environment variable
 const validateApiKey = (apiKey: string | null) => {
@@ -25,8 +24,6 @@ export async function POST(request: Request) {
 
     // Parse the incoming request
     const data = await request.json();
-    
-    // Convert moisture to number if it's a string
     const moisture = Number(data.moisture);
 
     // Validate the request data
@@ -38,13 +35,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Reference to the specific trail's readings
-    const readingsRef = ref(database, `${data.trailId}-readings`);
+    // Use admin database reference
+    const readingsRef = adminDb.ref(`${data.trailId}-readings`);
 
-    // Add new reading to Firebase
-    await push(readingsRef, {
+    // Add new reading with server timestamp
+    await readingsRef.push({
       moisture: moisture,
-      timestamp: serverTimestamp()
+      timestamp: adminDb.ServerValue.TIMESTAMP
     });
 
     return NextResponse.json(

@@ -48,12 +48,12 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-black py-8 px-4">
+    <main className="min-h-screen bg-black py-4 sm:py-8 px-3 sm:px-4">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-8 text-center">
+        <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-8 text-center">
           🏔️ Cluj-Napoca Live Trail Conditions
         </h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
           {TRAILS.map((trail) => (
             <Speedometer
               key={trail.id}

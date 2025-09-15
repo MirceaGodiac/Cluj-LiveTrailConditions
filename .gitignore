@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+cluj-ltc-db-firebase-adminsdk-fbsvc-39553c2479.json
 
 # vercel
 .vercel
