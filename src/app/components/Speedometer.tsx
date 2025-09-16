@@ -7,6 +7,8 @@ interface SpeedometerProps {
   value: number;
   trailName: string;
   readings: Array<{ moisture: number; timestamp: number }>;
+
+  initialTimestamp?: number; // Add this new prop
 }
 
 const TIMEFRAMES = {
@@ -16,10 +18,13 @@ const TIMEFRAMES = {
   week: 7 * 24 * 60 * 60 * 1000,
 };
 
+const OFFLINE_THRESHOLD = 65 * 60 * 1000; // 1 hour and 5 minutes in milliseconds
+
 export default function Speedometer({
   value: initialValue,
   trailName,
   readings,
+  initialTimestamp = Date.now(), // Default to current time if not provided
 }: SpeedometerProps) {
   const [selectedTimeframe, setSelectedTimeframe] =
     useState<keyof typeof TIMEFRAMES>("12h");
@@ -68,12 +73,28 @@ export default function Speedometer({
     return minutesUntilNext;
   };
 
+  const isOffline = useMemo(() => {
+    if (filteredReadings.length === 0) {
+      // If no readings, check against initial timestamp
+      return true;
+    }
+    const lastReading = filteredReadings[filteredReadings.length - 1];
+    return Date.now() - lastReading.timestamp > OFFLINE_THRESHOLD;
+  }, [filteredReadings, initialTimestamp]);
+
   return (
     <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-700/50 p-4 sm:p-6">
       <div className="space-y-4 sm:space-y-6">
         <h2 className="text-xl sm:text-2xl font-bold text-slate-100 capitalize">
           {trailName}
         </h2>
+
+        {isOffline && (
+          <div className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-200 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+            <span>🔌</span>
+            Offline - out for battery charging
+          </div>
+        )}
 
         {/* Conditions Panel */}
         <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700/50">
@@ -121,7 +142,7 @@ export default function Speedometer({
                         ).toLocaleTimeString()
                       : "N/A"}
                   </div>
-                  {filteredReadings.length > 0 && (
+                  {filteredReadings.length > 0 && !isOffline && (
                     <div className="text-slate-500">
                       Next update in approximately{" "}
                       {getNextUpdateTime(
