@@ -92,7 +92,7 @@ export default function Speedometer({
         {isOffline && (
           <div className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-200 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2">
             <span>🔌</span>
-            Offline - out for battery charging
+            <span>Offline - Out for maintanance and updates</span>
           </div>
         )}
 
