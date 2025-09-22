@@ -17,7 +17,7 @@ interface FirebaseReading {
   };
 }
 
-const TRAILS = [{ id: "1", name: "Livada Tech Trail Upper" }];
+const TRAILS = [{ id: "2", name: "Livada Tech Trail Upper" }];
 
 export default function Home() {
   const [trailReadings, setTrailReadings] = useState<{

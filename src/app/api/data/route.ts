@@ -26,12 +26,17 @@ export async function POST(request: Request) {
     // Parse the incoming request
     const data = await request.json();
     
-    // Convert moisture to number if it's a string
+    // Convert moisture and battery to numbers if they're strings
     const moisture = Number(data.moisture);
+    const battery = Number(data.battery);
 
     // Validate the request data
-    if (!data.trailId || isNaN(moisture)) {
-      console.log('Validation failed:', { trailId: data.trailId, moisture });
+    if (!data.trailId || isNaN(moisture) || isNaN(battery)) {
+      console.log('Validation failed:', { 
+        trailId: data.trailId, 
+        moisture,
+        battery
+      });
       return NextResponse.json(
         { error: 'Invalid data format' },
         { status: 400 }
@@ -44,11 +49,12 @@ export async function POST(request: Request) {
     // Add new reading to Firebase
     await push(readingsRef, {
       moisture: moisture,
+      battery: battery,
       timestamp: serverTimestamp()
     });
 
     return NextResponse.json(
-      { success: true, moisture },
+      { success: true, moisture, battery },
       { status: 200 }
     );
 
