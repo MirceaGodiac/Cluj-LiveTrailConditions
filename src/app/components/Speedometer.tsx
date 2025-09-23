@@ -18,7 +18,7 @@ const TIMEFRAMES = {
   week: 7 * 24 * 60 * 60 * 1000,
 };
 
-const OFFLINE_THRESHOLD = 65 * 60 * 1000; // 1 hour and 5 minutes in milliseconds
+const OFFLINE_THRESHOLD = 4 * 61 * 60 * 1000; // 4 hours and 4 minutes in milliseconds
 
 export default function Speedometer({
   value: initialValue,
