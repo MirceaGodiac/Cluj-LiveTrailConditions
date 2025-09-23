@@ -64,13 +64,19 @@ export default function Speedometer({
   const condition = getCondition(latestValue);
 
   const getNextUpdateTime = (lastTimestamp: number) => {
-    const nextUpdate = lastTimestamp + 60 * 60 * 1000; // 1 hour after last update
+    const nextUpdate = lastTimestamp + 4 * 60 * 60 * 1000; // 4 hours after last update
     const timeUntilNext = nextUpdate - Date.now();
-    const minutesUntilNext = Math.max(
-      0,
-      Math.ceil(timeUntilNext / (60 * 1000))
-    );
-    return minutesUntilNext;
+
+    if (timeUntilNext <= 0) return "0 minutes";
+
+    const totalMinutes = Math.ceil(timeUntilNext / (60 * 1000));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
   };
 
   const isOffline = useMemo(() => {
@@ -147,8 +153,7 @@ export default function Speedometer({
                       Next update in approximately{" "}
                       {getNextUpdateTime(
                         filteredReadings[filteredReadings.length - 1].timestamp
-                      )}{" "}
-                      minutes
+                      )}
                     </div>
                   )}
                 </div>
