@@ -12,10 +12,9 @@ interface SpeedometerProps {
 }
 
 const TIMEFRAMES = {
-  "12h": 12 * 60 * 60 * 1000,
-  "24h": 24 * 60 * 60 * 1000,
-  "48h": 48 * 60 * 60 * 1000,
-  week: 7 * 24 * 60 * 60 * 1000,
+  "Last 24h": 24 * 60 * 60 * 1000,
+  "Last 48h": 48 * 60 * 60 * 1000,
+  "Last 7 days": 7 * 24 * 60 * 60 * 1000,
 };
 
 const OFFLINE_THRESHOLD = 4 * 61 * 60 * 1000; // 4 hours and 4 minutes in milliseconds
@@ -27,7 +26,7 @@ export default function Speedometer({
   initialTimestamp = Date.now(), // Default to current time if not provided
 }: SpeedometerProps) {
   const [selectedTimeframe, setSelectedTimeframe] =
-    useState<keyof typeof TIMEFRAMES>("12h");
+    useState<keyof typeof TIMEFRAMES>("Last 24h");
 
   const filteredReadings = useMemo(() => {
     const now = Date.now();

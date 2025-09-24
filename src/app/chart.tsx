@@ -51,7 +51,7 @@ export default function Graph({
 
   const formatTimestamp = (timestamp: number) => {
     const date = new Date(timestamp);
-    if (timeframe === "week" || timeframe === "month") {
+    if (timeframe === "Last 7 days" || timeframe === "month") {
       return date.toLocaleDateString();
     }
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
