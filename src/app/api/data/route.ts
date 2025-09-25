@@ -14,14 +14,8 @@ const validatePostApiKey = (apiKey: string | null) => {
 
 // List of allowed origins for CORS
 const ALLOWED_ORIGINS = [
-  'http://localhost:3000',
-  'http://localhost:5500',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:5500',
   'https://live-trail-server.vercel.app',
-  // Add your production domain here
-  // 'https://yourdomain.com',
-  // 'https://www.yourdomain.com'
+  'https://trailsilvania.com/',
 ];
 
 // Interface for Firebase reading data
