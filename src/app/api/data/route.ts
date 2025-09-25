@@ -1,79 +1,68 @@
-import { NextResponse } from "next/server";
-import { database } from "@/app/lib/firebaseconfig";
-import { ref, query, limitToLast, get } from "firebase/database";
+import { NextResponse } from 'next/server';
+import { database } from '@/app/lib/firebaseconfig';
+import { ref, push, serverTimestamp } from 'firebase/database';
 
-const allowedOrigins = [
-  "http://localhost:5500", // For local testing, remove in production
-  "http://localhost:3000",
-  "https://live-trail-server.vercel.app",
-  "https://trailsilvania.com",
-];
-
-// ✅ Origin validation
-function validateOrigin(origin: string | null) {
-  if (!origin) return false;
-  return allowedOrigins.includes(origin);
-}
-
-// ✅ Simple rate limiting (by IP)
-const rateLimitMap = new Map<string, { count: number; timestamp: number }>();
-const LIMIT = 60; // requests
-const WINDOW = 60 * 1000; // 1 minute
-
-function isRateLimited(identifier: string) {
-  const now = Date.now();
-  const entry = rateLimitMap.get(identifier);
-
-  if (!entry) {
-    rateLimitMap.set(identifier, { count: 1, timestamp: now });
+// Validate API key from environment variable
+const validateApiKey = (apiKey: string | null) => {
+  const validApiKey = process.env.API_KEY;
+  if (!validApiKey) {
+    console.error('API_KEY not configured in environment variables');
     return false;
   }
+  return apiKey === validApiKey;
+};
 
-  if (now - entry.timestamp > WINDOW) {
-    rateLimitMap.set(identifier, { count: 1, timestamp: now });
-    return false;
-  }
-
-  if (entry.count >= LIMIT) return true;
-
-  entry.count++;
-  rateLimitMap.set(identifier, entry);
-  return false;
-}
-
-export async function GET(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!validateOrigin(origin)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const ip = request.headers.get("x-forwarded-for") || "unknown";
-  if (isRateLimited(ip)) {
-    return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
-  }
-
+export async function POST(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const trailId = searchParams.get("trailId");
-
-    if (!trailId) {
-      return NextResponse.json({ error: "Missing trailId" }, { status: 400 });
+    // Check for API key in headers
+    const apiKey = request.headers.get('x-api-key');
+    if (!validateApiKey(apiKey)) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    const readingsRef = ref(database, `${trailId}-readings`);
-    const lastReadingQuery = query(readingsRef, limitToLast(1));
-    const snapshot = await get(lastReadingQuery);
+    // Parse the incoming request
+    const data = await request.json();
+    
+    // Convert moisture and battery to numbers if they're strings
+    const moisture = Number(data.moisture);
+    const battery = Number(data.battery);
 
-    if (!snapshot.exists()) {
-      return NextResponse.json({ error: "No readings found" }, { status: 404 });
+    // Validate the request data
+    if (!data.trailId || isNaN(moisture) || isNaN(battery)) {
+      console.log('Validation failed:', { 
+        trailId: data.trailId, 
+        moisture,
+        battery
+      });
+      return NextResponse.json(
+        { error: 'Invalid data format' },
+        { status: 400 }
+      );
     }
 
-    const raw = snapshot.val();
-    const data = Object.values(raw)[0] as Record<string, unknown>;
+    // Reference to the specific trail's readings
+    const readingsRef = ref(database, `${data.trailId}-readings`);
 
-    return NextResponse.json({ trailId, ...data });
+    // Add new reading to Firebase
+    await push(readingsRef, {
+      moisture: moisture,
+      battery: battery,
+      timestamp: serverTimestamp()
+    });
+
+    return NextResponse.json(
+      { success: true, moisture, battery },
+      { status: 200 }
+    );
+
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error('Error processing reading:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
