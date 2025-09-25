@@ -7,6 +7,8 @@ import { ref, get, query, orderByChild, limitToLast } from 'firebase/database';
 const ALLOWED_ORIGINS = [
   'https://trailsilvania.com/',
   'https://live-trail-server.vercel.app/',
+  'http://localhost:3000', // Remove in production
+  'http://localhost:5500', 
 ];
 
 // Simple in-memory rate limiting (consider Redis for production)
