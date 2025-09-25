@@ -55,7 +55,12 @@ export default function Speedometer({
         color: "bg-sky-500",
         warning: "Some parts may still be slippery",
       };
-    if (val <= 350) return { name: "Hero Dirt", color: "bg-emerald-500" };
+    if (val <= 350)
+      return {
+        name: "Hero Dirt",
+        color: "bg-emerald-500",
+        warning: "Lower section of trails may still be slippery",
+      };
     if (val <= 400) return { name: "Dry", color: "bg-amber-400" };
     return { name: "Dusty", color: "bg-orange-400" };
   };
