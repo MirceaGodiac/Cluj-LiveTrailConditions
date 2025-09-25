@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { database } from '@/app/lib/firebaseconfig';
-import { ref, push, serverTimestamp, query, orderByChild, limitToLast, get } from 'firebase/database';
+import { ref, push, serverTimestamp, get } from 'firebase/database';
 
 // Validate API key from environment variable
 const validatePostApiKey = (apiKey: string | null) => {
@@ -24,8 +24,23 @@ const ALLOWED_ORIGINS = [
   // 'https://www.yourdomain.com'
 ];
 
+// Interface for Firebase reading data
+interface Reading {
+  moisture: number;
+  battery: number;
+  timestamp: number;
+}
+
+// Interface for trail reading response
+interface TrailReading {
+  trailId: string;
+  moisture: number;
+  timestamp: number;
+  readingId: string;
+}
+
 // Validate origin for CORS
-const validateOrigin = (request: Request) => {
+const validateOrigin = (request: Request): boolean => {
   const origin = request.headers.get('origin');
   
   if (!origin) {
@@ -40,7 +55,7 @@ const validateOrigin = (request: Request) => {
 };
 
 // Add CORS headers to response
-const addCorsHeaders = (response: NextResponse, origin?: string) => {
+const addCorsHeaders = (response: NextResponse, origin: string | null): NextResponse => {
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
     response.headers.set('Access-Control-Allow-Origin', origin);
   }
@@ -50,7 +65,7 @@ const addCorsHeaders = (response: NextResponse, origin?: string) => {
 };
 
 // Handle OPTIONS preflight request
-export async function OPTIONS(request: Request) {
+export async function OPTIONS(request: Request): Promise<NextResponse> {
   const origin = request.headers.get('origin');
   
   if (!origin || !ALLOWED_ORIGINS.includes(origin)) {
@@ -61,10 +76,10 @@ export async function OPTIONS(request: Request) {
   return addCorsHeaders(response, origin);
 }
 
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
+  const origin = request.headers.get('origin');
+  
   try {
-    const origin = request.headers.get('origin');
-    
     // Check origin validation
     if (!validateOrigin(request)) {
       const response = NextResponse.json(
@@ -79,22 +94,23 @@ export async function GET(request: Request) {
     const snapshot = await get(rootRef);
 
     if (!snapshot.exists()) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'No data found' },
         { status: 404 }
       );
+      return addCorsHeaders(response, origin);
     }
 
-    const allData = snapshot.val();
-    const trailReadings = [];
+    const allData = snapshot.val() as Record<string, Record<string, Reading> | unknown>;
+    const trailReadings: TrailReading[] = [];
 
     // Find all trail reading collections (format: "1-readings", "2-readings", etc.)
     for (const [key, value] of Object.entries(allData)) {
-      if (key.match(/^\d+-readings$/) && typeof value === 'object') {
+      if (key.match(/^\d+-readings$/) && typeof value === 'object' && value !== null) {
         const trailNumber = key.split('-')[0];
         
         // Get the last reading from this trail
-        const readings = value as Record<string, any>;
+        const readings = value as Record<string, Reading>;
         const readingEntries = Object.entries(readings);
         
         if (readingEntries.length > 0) {
