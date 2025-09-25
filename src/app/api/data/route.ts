@@ -1,68 +1,127 @@
+// app/api/public-trail/route.ts
 import { NextResponse } from 'next/server';
 import { database } from '@/app/lib/firebaseconfig';
-import { ref, push, serverTimestamp } from 'firebase/database';
+import { ref, get, query, orderByChild, limitToLast } from 'firebase/database';
 
-// Validate API key from environment variable
-const validateApiKey = (apiKey: string | null) => {
-  const validApiKey = process.env.API_KEY;
-  if (!validApiKey) {
-    console.error('API_KEY not configured in environment variables');
+// Configure allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://trailsilvania.com/',
+  'https://live-trail-server.vercel.app/',
+  'http://localhost:3000', // Remove in production
+  'http://localhost:5500', 
+];
+
+// Simple in-memory rate limiting (consider Redis for production)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_REQUESTS = 30; // 30 requests per minute
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const userRequests = rateLimitMap.get(ip) || [];
+  
+  // Filter out old requests
+  const recentRequests = userRequests.filter((time: number) => now - time < RATE_LIMIT_WINDOW);
+  
+  if (recentRequests.length >= MAX_REQUESTS) {
     return false;
   }
-  return apiKey === validApiKey;
-};
+  
+  recentRequests.push(now);
+  rateLimitMap.set(ip, recentRequests);
+  return true;
+}
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   try {
-    // Check for API key in headers
-    const apiKey = request.headers.get('x-api-key');
-    if (!validateApiKey(apiKey)) {
+    // Get client IP for rate limiting
+    const ip = request.headers.get('x-forwarded-for') || 
+                request.headers.get('x-real-ip') || 
+                'unknown';
+    
+    // Check rate limit
+    if (!checkRateLimit(ip)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
+        { error: 'Too many requests' },
+        { status: 429 }
       );
     }
-
-    // Parse the incoming request
-    const data = await request.json();
     
-    // Convert moisture and battery to numbers if they're strings
-    const moisture = Number(data.moisture);
-    const battery = Number(data.battery);
-
-    // Validate the request data
-    if (!data.trailId || isNaN(moisture) || isNaN(battery)) {
-      console.log('Validation failed:', { 
-        trailId: data.trailId, 
-        moisture,
-        battery
-      });
+    // Get trail ID from query parameters
+    const { searchParams } = new URL(request.url);
+    const trailId = searchParams.get('trailId');
+    
+    if (!trailId) {
       return NextResponse.json(
-        { error: 'Invalid data format' },
+        { error: 'Trail ID required' },
         { status: 400 }
       );
     }
-
-    // Reference to the specific trail's readings
-    const readingsRef = ref(database, `${data.trailId}-readings`);
-
-    // Add new reading to Firebase
-    await push(readingsRef, {
-      moisture: moisture,
-      battery: battery,
-      timestamp: serverTimestamp()
+    
+    // Validate trail ID format (alphanumeric and hyphens only)
+    if (!/^[a-zA-Z0-9-]+$/.test(trailId)) {
+      return NextResponse.json(
+        { error: 'Invalid trail ID format' },
+        { status: 400 }
+      );
+    }
+    
+    // Get origin for CORS
+    const origin = request.headers.get('origin');
+    
+    // Fetch latest reading from Firebase
+    const readingsRef = ref(database, `${trailId}-readings`);
+    const recentQuery = query(readingsRef, orderByChild('timestamp'), limitToLast(1));
+    const snapshot = await get(recentQuery);
+    
+    let latestReading = null;
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      const key = Object.keys(data)[0];
+      latestReading = {
+        moisture: data[key].moisture,
+        battery: data[key].battery,
+        timestamp: data[key].timestamp,
+      };
+    }
+    
+    // Create response
+    const response = NextResponse.json({
+      trailId,
+      reading: latestReading,
+      cached: false,
     });
-
-    return NextResponse.json(
-      { success: true, moisture, battery },
-      { status: 200 }
-    );
-
+    
+    // Set CORS headers if origin is allowed
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+      response.headers.set('Access-Control-Allow-Origin', origin);
+      response.headers.set('Access-Control-Allow-Methods', 'GET');
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    }
+    
+    // Cache for 30 seconds to reduce load
+    response.headers.set('Cache-Control', 's-maxage=30, stale-while-revalidate');
+    
+    return response;
+    
   } catch (error) {
-    console.error('Error processing reading:', error);
+    console.error('Error fetching trail data:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
   }
+}
+
+export async function OPTIONS(request: Request) {
+  const origin = request.headers.get('origin');
+  const response = new NextResponse(null, { status: 200 });
+  
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Methods', 'GET');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  }
+  
+  return response;
 }

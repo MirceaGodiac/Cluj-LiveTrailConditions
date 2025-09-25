@@ -56,8 +56,8 @@ export default function Speedometer({
         warning: "Some parts may still be slippery",
       };
     if (val <= 350) return { name: "Hero Dirt", color: "bg-emerald-500" };
-    if (val <= 400) return { name: "Dry", color: "bg-emerald-500" };
-    return { name: "Dusty", color: "bg-amber-400" };
+    if (val <= 400) return { name: "Dry", color: "bg-amber-400" };
+    return { name: "Dusty", color: "bg-orange-400" };
   };
 
   const condition = getCondition(latestValue);
@@ -191,7 +191,7 @@ export default function Speedometer({
                 {
                   name: "Dusty",
                   range: "> 400",
-                  color: "bg-rose-400",
+                  color: "bg-orange-400",
                 },
               ].map((item) => (
                 <div

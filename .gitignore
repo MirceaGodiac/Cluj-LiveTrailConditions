@@ -20,6 +20,8 @@
 # production
 /build
 
+/server/service-accounts
+
 # misc
 .DS_Store
 *.pem
