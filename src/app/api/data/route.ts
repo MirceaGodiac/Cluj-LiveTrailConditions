@@ -3,8 +3,8 @@ import { database } from "@/app/lib/firebaseconfig";
 import { ref, query, limitToLast, get } from "firebase/database";
 
 const allowedOrigins = [
-  "http://localhost:5500/", // For local testing, remove in production
-  "http://localhost:3000/",
+  "http://localhost:5500", // For local testing, remove in production
+  "http://localhost:3000",
   "https://live-trail-server.vercel.app",
   "https://trailsilvania.com",
 ];
