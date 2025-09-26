@@ -47,7 +47,6 @@ const validateOrigin = (request: Request): boolean => {
 // Add CORS headers to response
 const addCorsHeaders = (response: NextResponse, origin: string | null): NextResponse => {
   response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
-  response.headers.set('Access-Control-Allow-Origin', 'https://localhost:5500');
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -65,7 +64,6 @@ export async function OPTIONS(request: Request): Promise<NextResponse> {
   // Add CORS headers - prioritize trailsilvania.com
   
   response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
-  response.headers.set('Access-Control-Allow-Origin', 'https://localhost:5500');
   
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
