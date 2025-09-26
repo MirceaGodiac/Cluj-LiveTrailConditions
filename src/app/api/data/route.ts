@@ -6,6 +6,10 @@ import { ref, get, push, serverTimestamp } from 'firebase/database';
 const ALLOWED_ORIGINS = [
   'https://live-trail-server.vercel.app',
   'https://trailsilvania.com',
+  'http://localhost:5500',
+  'http://localhost:3000',
+  'http://127.0.0.1:5500',
+  'http://127.0.0.1:3000',
 ];
 
 // Interface for Firebase reading data
@@ -53,12 +57,16 @@ const validateOrigin = (request: Request): boolean => {
 
 // Add CORS headers to response
 const addCorsHeaders = (response: NextResponse, origin: string | null): NextResponse => {
-  //response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
-
-  response.headers.set('Access-Control-Allow-Origin', 'http://localhost:5500');
+  // Check if origin is in allowed list and set appropriate header
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+  } else if (origin === 'https://trailsilvania.com') {
+    // Special case for WordPress site
+    response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
+  }
+  
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
-
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
   
   return response;
 };
@@ -70,15 +78,7 @@ export async function OPTIONS(request: Request): Promise<NextResponse> {
   // Create response with 200 status
   const response = new NextResponse(null, { status: 200 });
   
-  // Add CORS headers - prioritize trailsilvania.com
-  //response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
-  response.headers.set('Access-Control-Allow-Origin', 'http://localhost:5500');
-  
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
-
-  
-  return response;
+  return addCorsHeaders(response, origin);
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
