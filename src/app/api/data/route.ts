@@ -46,13 +46,7 @@ const validateOrigin = (request: Request): boolean => {
 
 // Add CORS headers to response
 const addCorsHeaders = (response: NextResponse, origin: string | null): NextResponse => {
-  // Always add trailsilvania.com for WordPress compatibility
-  if (origin === 'https://trailsilvania.com') {
-    response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
-  } else if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
-  }
-  
+  response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -92,7 +86,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         { status: 403 }
       );
       return addCorsHeaders(response, origin);
-    }
+    } 
 
     // Get all trail readings by scanning the database
     const rootRef = ref(database, '/');
