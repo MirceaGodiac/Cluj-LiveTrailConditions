@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { database } from '@/app/lib/firebaseconfig';
-import { ref, get } from 'firebase/database';
+import { ref, get, push, serverTimestamp } from 'firebase/database';
 
 // List of allowed origins for CORS
 const ALLOWED_ORIGINS = [
@@ -47,6 +47,7 @@ const validateOrigin = (request: Request): boolean => {
 // Add CORS headers to response
 const addCorsHeaders = (response: NextResponse, origin: string | null): NextResponse => {
   response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
+  response.headers.set('Access-Control-Allow-Origin', 'https://localhost:5500');
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -62,11 +63,9 @@ export async function OPTIONS(request: Request): Promise<NextResponse> {
   const response = new NextResponse(null, { status: 200 });
   
   // Add CORS headers - prioritize trailsilvania.com
-  if (origin === 'https://trailsilvania.com') {
-    response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
-  } else if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
-  }
+  
+  response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
+  response.headers.set('Access-Control-Allow-Origin', 'https://localhost:5500');
   
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
@@ -156,5 +155,70 @@ export async function GET(request: Request): Promise<NextResponse> {
       { status: 500 }
     );
     return addCorsHeaders(response, origin);
+  }
+}
+
+// Validate API key from environment variable
+const validatePostApiKey = (apiKey: string | null) => {
+  const validApiKey = process.env.API_KEY;
+  if (!validApiKey) {
+    console.error('API_KEY not configured in environment variables');
+    return false;
+  }
+  return apiKey === validApiKey;
+};
+
+export async function POST(request: Request) {
+  try {
+    // Check for API key in headers
+    const apiKey = request.headers.get('x-api-key');
+    if (!validatePostApiKey(apiKey)) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Parse the incoming request
+    const data = await request.json();
+    
+    // Convert moisture and battery to numbers if they're strings
+    const moisture = Number(data.moisture);
+    const battery = Number(data.battery);
+
+    // Validate the request data
+    if (!data.trailId || isNaN(moisture) || isNaN(battery)) {
+      console.log('Validation failed:', { 
+        trailId: data.trailId, 
+        moisture,
+        battery
+      });
+      return NextResponse.json(
+        { error: 'Invalid data format' },
+        { status: 400 }
+      );
+    }
+
+    // Reference to the specific trail's readings
+    const readingsRef = ref(database, `${data.trailId}-readings`);
+
+    // Add new reading to Firebase
+    await push(readingsRef, {
+      moisture: moisture,
+      battery: battery,
+      timestamp: serverTimestamp()
+    });
+
+    return NextResponse.json(
+      { success: true, moisture, battery },
+      { status: 200 }
+    );
+
+  } catch (error) {
+    console.error('Error processing reading:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
