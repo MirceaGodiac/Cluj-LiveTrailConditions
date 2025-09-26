@@ -6,10 +6,6 @@ import { ref, get, push, serverTimestamp } from 'firebase/database';
 const ALLOWED_ORIGINS = [
   'https://live-trail-server.vercel.app',
   'https://trailsilvania.com',
-  'http://localhost:5500',
-  'http://localhost:3000',
-  'http://127.0.0.1:5500',
-  'http://127.0.0.1:3000',
 ];
 
 // Interface for Firebase reading data
