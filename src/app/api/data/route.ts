@@ -1,21 +1,15 @@
 import { NextResponse } from 'next/server';
 import { database } from '@/app/lib/firebaseconfig';
-import { ref, push, serverTimestamp, get } from 'firebase/database';
-
-// Validate API key from environment variable
-const validatePostApiKey = (apiKey: string | null) => {
-  const validApiKey = process.env.API_KEY;
-  if (!validApiKey) {
-    console.error('API_KEY not configured in environment variables');
-    return false;
-  }
-  return apiKey === validApiKey;
-};
+import { ref, get } from 'firebase/database';
 
 // List of allowed origins for CORS
 const ALLOWED_ORIGINS = [
   'https://live-trail-server.vercel.app',
-  'https://trailsilvania.com/',
+  'https://trailsilvania.com',
+  'http://localhost:3000',
+  'http://localhost:5500',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5500',
 ];
 
 // Interface for Firebase reading data
@@ -33,13 +27,19 @@ interface TrailReading {
   readingId: string;
 }
 
-// Validate origin for CORS
+// Validate origin for CORS (more permissive for WordPress)
 const validateOrigin = (request: Request): boolean => {
   const origin = request.headers.get('origin');
   
+  // Always allow trailsilvania.com
+  if (origin === 'https://trailsilvania.com') {
+    console.log(`Origin validation: ${origin} - allowed`);
+    return true;
+  }
+  
   if (!origin) {
-    console.log('No origin header found');
-    return false;
+    console.log('No origin header found - allowing for direct access');
+    return true; // Allow direct API access without origin
   }
   
   const isAllowed = ALLOWED_ORIGINS.includes(origin);
@@ -50,11 +50,17 @@ const validateOrigin = (request: Request): boolean => {
 
 // Add CORS headers to response
 const addCorsHeaders = (response: NextResponse, origin: string | null): NextResponse => {
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+  // Always add trailsilvania.com for WordPress compatibility
+  if (origin === 'https://trailsilvania.com') {
+    response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
+  } else if (origin && ALLOWED_ORIGINS.includes(origin)) {
     response.headers.set('Access-Control-Allow-Origin', origin);
   }
+  
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  
   return response;
 };
 
@@ -62,12 +68,21 @@ const addCorsHeaders = (response: NextResponse, origin: string | null): NextResp
 export async function OPTIONS(request: Request): Promise<NextResponse> {
   const origin = request.headers.get('origin');
   
-  if (!origin || !ALLOWED_ORIGINS.includes(origin)) {
-    return new NextResponse('Forbidden', { status: 403 });
+  // Create response with 200 status
+  const response = new NextResponse(null, { status: 200 });
+  
+  // Add CORS headers - prioritize trailsilvania.com
+  if (origin === 'https://trailsilvania.com') {
+    response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
+  } else if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
   }
   
-  const response = new NextResponse(null, { status: 200 });
-  return addCorsHeaders(response, origin);
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  
+  return response;
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -153,61 +168,3 @@ export async function GET(request: Request): Promise<NextResponse> {
     return addCorsHeaders(response, origin);
   }
 }
-
-export async function POST(request: Request) {
-  try {
-    // Check for API key in headers
-    const apiKey = request.headers.get('x-api-key');
-    if (!validatePostApiKey(apiKey)) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Parse the incoming request
-    const data = await request.json();
-    
-    // Convert moisture and battery to numbers if they're strings
-    const moisture = Number(data.moisture);
-    const battery = Number(data.battery);
-
-    // Validate the request data
-    if (!data.trailId || isNaN(moisture) || isNaN(battery)) {
-      console.log('Validation failed:', { 
-        trailId: data.trailId, 
-        moisture,
-        battery
-      });
-      return NextResponse.json(
-        { error: 'Invalid data format' },
-        { status: 400 }
-      );
-    }
-
-    // Reference to the specific trail's readings
-    const readingsRef = ref(database, `${data.trailId}-readings`);
-
-    // Add new reading to Firebase
-    await push(readingsRef, {
-      moisture: moisture,
-      battery: battery,
-      timestamp: serverTimestamp()
-    });
-
-    return NextResponse.json(
-      { success: true, moisture, battery },
-      { status: 200 }
-    );
-
-  } catch (error) {
-    console.error('Error processing reading:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-
-
