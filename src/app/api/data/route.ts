@@ -32,6 +32,7 @@ interface TrailData {
 
 // Validate origin for CORS (more permissive for WordPress)
 const validateOrigin = (request: Request): boolean => {
+  return true;
   const origin = request.headers.get('origin');
   
   // Always allow trailsilvania.com
