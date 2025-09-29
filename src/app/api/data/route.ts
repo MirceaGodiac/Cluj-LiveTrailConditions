@@ -60,7 +60,7 @@ const addCorsHeaders = (response: NextResponse, origin: string | null): NextResp
     // Special case for WordPress site
     response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
   }
-  response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
+  response.headers.set('Access-Control-Allow-Origin', 'http://localhost:5500');
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
   
