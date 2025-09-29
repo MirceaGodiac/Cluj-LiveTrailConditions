@@ -53,13 +53,6 @@ const validateOrigin = (request: Request): boolean => {
 
 // Add CORS headers to response
 const addCorsHeaders = (response: NextResponse, origin: string | null): NextResponse => {
-  // Check if origin is in allowed list and set appropriate header
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
-  } else if (origin === 'https://trailsilvania.com') {
-    // Special case for WordPress site
-    response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
-  }
   response.headers.set('Access-Control-Allow-Origin', 'http://localhost:5500');
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
