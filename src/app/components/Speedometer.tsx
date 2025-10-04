@@ -268,39 +268,6 @@ export default function Speedometer({
             )}
           </div>
         </div>
-
-        {/* Moving Average Graph Panel */}
-        <div className="bg-slate-900/50 rounded-xl p-3 sm:p-4 border border-slate-700/50">
-          <div className="flex flex-col space-y-2 mb-3">
-            <div className="text-xs sm:text-sm text-slate-400 uppercase tracking-wide">
-              Moving Average
-            </div>
-            <select
-              value={maWindow}
-              onChange={(e) => setMaWindow(Number(e.target.value))}
-              className="w-full bg-slate-800 text-slate-300 text-sm rounded px-2 py-1.5 border border-slate-700"
-            >
-              {MOVING_AVERAGE_WINDOWS.map((window) => (
-                <option key={window} value={window}>
-                  {window} readings
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="h-[150px]">
-            {filteredReadings.length >= maWindow ? (
-              <Graph
-                readings={calculateMovingAverage(filteredReadings, maWindow)}
-                key={`ma-${selectedTimeframe}-${maWindow}`}
-                timeframe={selectedTimeframe}
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-slate-400">
-                Not enough data for moving average
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );
