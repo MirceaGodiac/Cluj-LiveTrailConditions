@@ -18,6 +18,24 @@ const TIMEFRAMES = {
 };
 
 const OFFLINE_THRESHOLD = 4 * 61 * 60 * 1000; // 4 hours and 4 minutes in milliseconds
+const MOVING_AVERAGE_WINDOWS = [3, 5, 7, 9, 11];
+
+const calculateMovingAverage = (
+  readings: Array<{ moisture: number; timestamp: number }>,
+  windowSize: number
+) => {
+  const result = [];
+  for (let i = windowSize - 1; i < readings.length; i++) {
+    const window = readings.slice(i - windowSize + 1, i + 1);
+    const avgMoisture =
+      window.reduce((sum, r) => sum + r.moisture, 0) / windowSize;
+    result.push({
+      moisture: avgMoisture,
+      timestamp: readings[i].timestamp,
+    });
+  }
+  return result;
+};
 
 export default function Speedometer({
   value: initialValue,
@@ -27,6 +45,7 @@ export default function Speedometer({
 }: SpeedometerProps) {
   const [selectedTimeframe, setSelectedTimeframe] =
     useState<keyof typeof TIMEFRAMES>("Last 24h");
+  const [maWindow, setMaWindow] = useState<number>(3);
 
   const filteredReadings = useMemo(() => {
     const now = Date.now();
@@ -245,6 +264,39 @@ export default function Speedometer({
             ) : (
               <div className="flex h-full items-center justify-center text-slate-400">
                 Loading data...
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Moving Average Graph Panel */}
+        <div className="bg-slate-900/50 rounded-xl p-3 sm:p-4 border border-slate-700/50">
+          <div className="flex flex-col space-y-2 mb-3">
+            <div className="text-xs sm:text-sm text-slate-400 uppercase tracking-wide">
+              Moving Average
+            </div>
+            <select
+              value={maWindow}
+              onChange={(e) => setMaWindow(Number(e.target.value))}
+              className="w-full bg-slate-800 text-slate-300 text-sm rounded px-2 py-1.5 border border-slate-700"
+            >
+              {MOVING_AVERAGE_WINDOWS.map((window) => (
+                <option key={window} value={window}>
+                  {window} readings
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="h-[150px]">
+            {filteredReadings.length >= maWindow ? (
+              <Graph
+                readings={calculateMovingAverage(filteredReadings, maWindow)}
+                key={`ma-${selectedTimeframe}-${maWindow}`}
+                timeframe={selectedTimeframe}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-slate-400">
+                Not enough data for moving average
               </div>
             )}
           </div>
