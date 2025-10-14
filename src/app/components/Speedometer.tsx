@@ -87,7 +87,7 @@ export default function Speedometer({
   const condition = getCondition(latestValue);
 
   const getNextUpdateTime = (lastTimestamp: number) => {
-    const nextUpdate = lastTimestamp + 4 * 60 * 60 * 1000; // 4 hours after last update
+    const nextUpdate = lastTimestamp + 12 * 60 * 60 * 1000; // 4 hours after last update
     const timeUntilNext = nextUpdate - Date.now();
 
     if (timeUntilNext <= 0) return "0 minutes";
