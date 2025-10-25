@@ -17,7 +17,7 @@ const TIMEFRAMES = {
   "Last 7 days": 7 * 24 * 60 * 60 * 1000,
 };
 
-const OFFLINE_THRESHOLD = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+const OFFLINE_THRESHOLD = 3 * 61 * 60 * 1000; // 12 hours in milliseconds
 const MOVING_AVERAGE_WINDOWS = [3, 5, 7, 9, 11];
 
 const calculateMovingAverage = (
@@ -207,6 +207,7 @@ export default function Speedometer({
                 {
                   name: "Slippery",
                   color: "bg-rose-500",
+                  range: "< 300",
                 },
                 {
                   name: "Wet / Damp",
