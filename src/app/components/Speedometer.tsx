@@ -33,11 +33,13 @@ export default function Speedometer({
     return readings.filter((reading) => now - reading.timestamp <= timeframeMs);
   }, [readings, selectedTimeframe]);
 
+  const latestReading = useMemo(() => {
+    return readings.length > 0 ? readings[readings.length - 1] : null;
+  }, [readings]);
+
   const latestValue = useMemo(() => {
-    return filteredReadings.length > 0
-      ? filteredReadings[filteredReadings.length - 1].moisture
-      : initialValue;
-  }, [filteredReadings, initialValue]);
+    return latestReading?.moisture ?? initialValue;
+  }, [latestReading, initialValue]);
 
   const condition = getCondition(latestValue);
 
@@ -58,147 +60,156 @@ export default function Speedometer({
   };
 
   const isOffline = useMemo(() => {
-    if (filteredReadings.length === 0) {
-      // If no readings, check against initial timestamp
+    if (!latestReading) {
       return true;
     }
-    const lastReading = filteredReadings[filteredReadings.length - 1];
-    return Date.now() - lastReading.timestamp > OFFLINE_THRESHOLD;
-  }, [filteredReadings]);
+    return Date.now() - latestReading.timestamp > OFFLINE_THRESHOLD;
+  }, [latestReading]);
+
+  const lastUpdateTime = latestReading
+    ? new Date(latestReading.timestamp).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "N/A";
 
   return (
-    <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-700/50 p-4 sm:p-6 transition-all duration-300 hover:bg-slate-800/70">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-100 capitalize bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">
-            {trailName}
-          </h2>
-          {!isOffline && (
-            <span className="flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            </span>
-          )}
+    <article className="hud-card hud-card-hover p-5 sm:p-7">
+      <div className="space-y-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="hud-label mb-2">🧭 Trail Node</p>
+            <h2 className="text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">
+              {trailName}
+            </h2>
+          </div>
+
+          <span
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+              isOffline
+                ? "border-amber-300/40 bg-amber-300/10 text-amber-200"
+                : "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isOffline ? "bg-amber-300" : "bg-emerald-300 live-dot"
+              }`}
+            />
+            {isOffline ? "Offline" : "Live"}
+          </span>
         </div>
 
         {isOffline && (
-          <div className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-200 px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-3 animate-pulse">
-            <span className="text-xl">🔌</span>
-            <span>Offline - Out for maintenance and updates</span>
+          <div className="rounded-xl border border-amber-400/35 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+            🔧 Feed offline for maintenance.
           </div>
         )}
 
-        {/* Conditions Panel */}
-        <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-700/50 transition-all duration-300 hover:bg-slate-900/60">
-          <div className="space-y-6">
-            <div className="text-sm text-slate-400 uppercase tracking-wide font-semibold">
-              Current Conditions
-            </div>
-
-            <div className="flex flex-col space-y-4">
+        <section className="hud-panel p-5 sm:p-6">
+          <div className="space-y-5">
+            <div className="hud-label">🌤️ Current Condition</div>
+            <div className="relative">
               <div
-                className={`${condition.tailwindColor} text-slate-900 text-3xl sm:text-5xl font-bold px-6 py-4 rounded-xl text-center shadow-lg transform transition-all duration-300 hover:scale-[1.02] cursor-default`}
+                className={`${condition.tailwindColor} rounded-xl px-6 py-5 text-center text-3xl font-bold text-slate-900 shadow-xl transition-transform duration-300 sm:text-5xl`}
               >
                 {condition.name}
               </div>
-
-              {condition.warning && (
-                <div className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-200 px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-3 animate-pulse">
-                  <span className="text-xl">⚠️</span>
-                  {condition.warning}
-                </div>
+              {!isOffline && (
+                <div className="pointer-events-none absolute inset-0 rounded-xl border border-cyan-300/35" />
               )}
+            </div>
 
-              <div className="flex flex-col items-center space-y-3 mt-2">
-                <div className="flex items-center gap-6">
-                  <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                    <span>← Lower</span>
-                    <span className="text-slate-500">(Wetter)</span>
-                  </div>
-                  <div className="text-4xl font-bold text-slate-100 tabular-nums transition-all duration-300">
-                    {latestValue}
-                  </div>
-                  <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                    <span className="text-slate-500">(Dryer)</span>
-                    <span>Higher →</span>
-                  </div>
+            {condition.warning && (
+              <div className="rounded-lg border border-yellow-400/35 bg-yellow-400/10 px-4 py-3 text-sm text-yellow-100">
+                {condition.warning}
+              </div>
+            )}
+
+            <div className="rounded-lg border border-slate-700/80 bg-slate-950/40 px-4 py-4">
+              <div className="flex items-center justify-center gap-4">
+                <div className="text-[11px] text-slate-400">
+                  <span className="text-slate-500">Wetter</span> Lower
                 </div>
-                <div className="flex flex-col items-center text-xs space-y-1 text-slate-400">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-green-500"></span>
-                    Last Updated{" "}
-                    {filteredReadings.length > 0
-                      ? new Date(
-                          filteredReadings[filteredReadings.length - 1]
-                            .timestamp,
-                        ).toLocaleTimeString()
-                      : "N/A"}
-                  </div>
-                  {filteredReadings.length > 0 && !isOffline && (
-                    <div className="text-slate-500">
-                      Next update in approximately{" "}
-                      <span className="text-slate-300 font-medium">
-                        {getNextUpdateTime(
-                          filteredReadings[filteredReadings.length - 1]
-                            .timestamp,
-                        )}
-                      </span>
-                    </div>
-                  )}
+                <div className="text-4xl font-bold tabular-nums text-slate-100">
+                  {latestValue}
                 </div>
+                <div className="text-[11px] text-slate-400">
+                  Higher <span className="text-slate-500">Dryer</span>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-1 text-center text-xs text-slate-400">
+                <div>Last updated {lastUpdateTime}</div>
+                {!isOffline && latestReading && (
+                  <div className="text-slate-500">
+                    Next update in{" "}
+                    <span className="font-medium text-slate-300">
+                      {getNextUpdateTime(latestReading.timestamp)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
+        </section>
 
-          {/* Condition Scale */}
-          <div className="mt-6 space-y-3">
-            <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold">
-              Condition Scale
-            </div>
+        <section className="hud-panel p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="hud-label">Condition Scale</div>
+            <div className="h-px w-16 hud-accent-line" />
+          </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              {getConditionPalette().map((item) => (
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
+            {getConditionPalette().map((item) => (
+              <div
+                key={item.name}
+                className="rounded-lg border border-slate-700/70 bg-slate-900/45 p-2.5 text-center transition-colors duration-200 hover:border-slate-500/70"
+              >
                 <div
-                  key={item.name}
-                  className="bg-slate-800/50 rounded-lg p-3 text-center transition-all duration-300 hover:bg-slate-800/70 cursor-default"
-                >
-                  <div
-                    className={`h-2 ${item.tailwindColor} rounded-full mb-2`}
-                  />
-                  <div className="font-medium text-slate-300 text-xs">
-                    {item.name}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    {item.rangeLabel}
-                  </div>
+                  className={`mb-2 h-1.5 rounded-full ${item.tailwindColor}`}
+                />
+                <div className="text-[11px] font-semibold text-slate-200">
+                  {item.name}
                 </div>
-              ))}
-            </div>
+                <div className="text-[10px] text-slate-400">
+                  {item.rangeLabel}
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        </section>
 
-        {/* Graph Panel */}
-        <div className="bg-slate-900/50 rounded-xl p-4 sm:p-6 border border-slate-700/50 transition-all duration-300 hover:bg-slate-900/60">
-          <div className="flex flex-col space-y-3 mb-4">
-            <div className="text-sm text-slate-400 uppercase tracking-wide font-semibold">
-              History -{" "}
-              {Object.keys(TIMEFRAMES).find((key) => key === selectedTimeframe)}
+        <section className="hud-panel p-4 sm:p-5">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="hud-label">History</div>
+              <div className="mt-1 text-sm text-slate-300">
+                {selectedTimeframe}
+              </div>
             </div>
-            <select
-              value={selectedTimeframe}
-              onChange={(e) =>
-                setSelectedTimeframe(e.target.value as keyof typeof TIMEFRAMES)
-              }
-              className="w-full bg-slate-800 text-slate-300 text-sm rounded-lg px-4 py-2.5 border border-slate-700 cursor-pointer transition-all duration-300 hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              {Object.keys(TIMEFRAMES).map((key) => (
-                <option key={key} value={key}>
-                  {key}
-                </option>
-              ))}
-            </select>
+
+            <label className="text-xs text-slate-400">
+              Timeframe
+              <select
+                value={selectedTimeframe}
+                onChange={(e) =>
+                  setSelectedTimeframe(
+                    e.target.value as keyof typeof TIMEFRAMES,
+                  )
+                }
+                className="mt-1 w-full rounded-lg border border-slate-600/60 bg-slate-900/65 px-3 py-2 text-sm text-slate-100 outline-none transition-all duration-200 hover:border-slate-500 focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-300/20 sm:min-w-44"
+              >
+                {Object.keys(TIMEFRAMES).map((key) => (
+                  <option key={key} value={key}>
+                    {key}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-          <div className="h-[180px]">
+
+          <div className="h-[210px] rounded-lg border border-slate-800/80 bg-slate-950/40 p-2">
             {filteredReadings.length > 0 ? (
               <Graph
                 readings={filteredReadings}
@@ -206,13 +217,13 @@ export default function Speedometer({
                 timeframe={selectedTimeframe}
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-slate-400">
-                <div className="animate-pulse">Loading data...</div>
+              <div className="flex h-full items-center justify-center text-sm text-slate-400">
+                📉 No data in this timeframe yet.
               </div>
             )}
           </div>
-        </div>
+        </section>
       </div>
-    </div>
+    </article>
   );
 }

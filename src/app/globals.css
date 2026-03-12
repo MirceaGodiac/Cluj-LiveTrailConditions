@@ -1,26 +1,92 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #050b17;
+  --background-soft: #0b1527;
+  --surface: rgba(14, 24, 42, 0.72);
+  --surface-strong: rgba(18, 32, 56, 0.88);
+  --border: rgba(125, 163, 210, 0.22);
+  --foreground: #e2edf8;
+  --foreground-muted: #9fb2cd;
+  --accent: #4fdcfb;
+  --accent-strong: #22c4f5;
+  --success: #34d399;
+  --warning: #fbbf24;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-border: var(--border);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px circle at 12% 8%, rgba(47, 130, 242, 0.16), transparent 42%),
+    radial-gradient(900px circle at 88% 14%, rgba(79, 220, 251, 0.12), transparent 38%),
+    linear-gradient(155deg, var(--background) 0%, var(--background-soft) 45%, #09101f 100%);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
+}
+
+@layer utilities {
+  .hud-title {
+    @apply bg-gradient-to-r from-slate-100 via-sky-100 to-cyan-300 bg-clip-text text-transparent;
+  }
+
+  .hud-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400;
+  }
+
+  .hud-card {
+    background: linear-gradient(180deg, rgba(20, 35, 58, 0.74) 0%, rgba(9, 18, 34, 0.8) 100%);
+    border: 1px solid rgba(125, 163, 210, 0.2);
+    box-shadow:
+      inset 0 1px 0 rgba(175, 221, 255, 0.08),
+      0 18px 40px rgba(3, 7, 16, 0.5),
+      0 0 0 1px rgba(41, 88, 133, 0.22);
+    @apply rounded-2xl backdrop-blur-xl transition-all duration-300;
+  }
+
+  .hud-card-hover:hover {
+    border-color: rgba(114, 196, 255, 0.34);
+    box-shadow:
+      inset 0 1px 0 rgba(175, 221, 255, 0.1),
+      0 22px 46px rgba(2, 10, 23, 0.6),
+      0 0 26px rgba(79, 220, 251, 0.12);
+    transform: translateY(-2px);
+  }
+
+  .hud-accent-line {
+    background: linear-gradient(90deg, rgba(79, 220, 251, 0.65) 0%, rgba(79, 220, 251, 0) 100%);
+  }
+
+  .hud-panel {
+    @apply rounded-xl border border-slate-700/70 bg-slate-900/40;
+  }
+
+  .live-dot {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55);
+    animation: pulse-ring 2s infinite;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgba(52, 211, 153, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+  }
 }

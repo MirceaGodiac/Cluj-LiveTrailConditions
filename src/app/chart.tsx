@@ -57,8 +57,31 @@ export default function Graph({
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
-  // Create a simple gradient background that doesn't cause issues
-  const gradientBackground = "rgba(6, 182, 212, 0.2)";
+  const gradientBackground = (context: {
+    chart: {
+      chartArea?: { top: number; bottom: number };
+      ctx: CanvasRenderingContext2D;
+    };
+  }) => {
+    const {
+      chart: { ctx, chartArea },
+    } = context;
+
+    if (!chartArea) {
+      return "rgba(79, 220, 251, 0.2)";
+    }
+
+    const gradient = ctx.createLinearGradient(
+      0,
+      chartArea.top,
+      0,
+      chartArea.bottom,
+    );
+    gradient.addColorStop(0, "rgba(79, 220, 251, 0.35)");
+    gradient.addColorStop(0.5, "rgba(79, 220, 251, 0.12)");
+    gradient.addColorStop(1, "rgba(79, 220, 251, 0.01)");
+    return gradient;
+  };
 
   // Derive annotation bands from the shared condition palette
   const conditionBands = getConditionPalette().map((c) => {
@@ -104,16 +127,16 @@ export default function Graph({
       {
         label: "Moisture Level",
         data: moistureValues,
-        borderColor: "#06b6d4", // Use solid color to avoid gradient issues
+        borderColor: "#4fdcfb",
         backgroundColor: gradientBackground,
-        tension: 0.4,
+        tension: 0.35,
         fill: true,
-        pointRadius: 6,
+        pointRadius: 5,
         pointHoverRadius: 8,
         pointBackgroundColor: pointColors,
         pointBorderColor: pointBorderColors,
         pointBorderWidth: 2,
-        borderWidth: 4,
+        borderWidth: 3,
         // Use segment coloring for the gradient effect on line segments
         segment: {
           borderColor: (ctx: {
@@ -143,10 +166,12 @@ export default function Graph({
       },
       tooltip: {
         backgroundColor: "rgba(15, 23, 42, 0.9)", // slate-900 with transparency
-        titleColor: "#e2e8f0", // slate-200
-        bodyColor: "#cbd5e1", // slate-300
-        borderColor: "#475569", // slate-600
+        titleColor: "#f1f5f9",
+        bodyColor: "#dbe8f6",
+        borderColor: "rgba(79, 220, 251, 0.5)",
         borderWidth: 1,
+        padding: 12,
+        displayColors: true,
         callbacks: {
           label: function (context: { parsed: { y: number } }) {
             const value = context.parsed.y;
@@ -160,20 +185,27 @@ export default function Graph({
     scales: {
       x: {
         grid: {
-          color: "rgba(71, 85, 105, 0.3)", // slate-600 with transparency
+          color: "rgba(100, 128, 163, 0.16)",
+          tickLength: 8,
         },
         ticks: {
-          color: "#94a3b8", // slate-400
+          color: "#9fb2cd",
+          font: {
+            size: 10,
+          },
           maxRotation: 45,
           minRotation: 45,
         },
       },
       y: {
         grid: {
-          color: "rgba(71, 85, 105, 0.3)",
+          color: "rgba(100, 128, 163, 0.15)",
         },
         ticks: {
-          color: "#94a3b8",
+          color: "#9fb2cd",
+          font: {
+            size: 10,
+          },
         },
         min: yAxisMin,
         max: yAxisMax,
@@ -185,9 +217,13 @@ export default function Graph({
     },
     elements: {
       point: {
-        hoverBackgroundColor: "#ffffff",
+        hoverBackgroundColor: "#f8fafc",
         hoverBorderWidth: 3,
       },
+    },
+    animation: {
+      duration: 480,
+      easing: "easeOutCubic" as const,
     },
   };
 
@@ -224,7 +260,7 @@ export default function Graph({
   };
 
   return (
-    <div className="w-full h-full">
+    <div className="h-full w-full rounded-md">
       <Line data={data} options={options} />
     </div>
   );
