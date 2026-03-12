@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { database } from '@/app/lib/firebaseconfig';
 import { ref, get, push, serverTimestamp } from 'firebase/database';
+import { normalizeTimestamp } from '@/app/lib/normalizeTimestamp';
 
 // List of allowed origins for CORS
 const ALLOWED_ORIGINS = [
   'https://live-trail-server.vercel.app',
+  // Config CORS header to also allow requests from trailsilvania NGO website
   'https://trailsilvania.com',
+  
 ];
 
 // Interface for Firebase reading data
@@ -30,30 +33,26 @@ interface TrailData {
   last7Days: TrailReading[];
 }
 
-// Validate origin for CORS (more permissive for WordPress)
+// Validate origin for CORS
 const validateOrigin = (request: Request): boolean => {
   const origin = request.headers.get('origin');
   
-  // Always allow trailsilvania.com
-  if (origin === 'https://trailsilvania.com') {
-    console.log(`Origin validation: ${origin} - allowed`);
-    return true;
-  }
-  
+  // If there's no origin, or it's not in the list, reject it.
   if (!origin) {
-    console.log('No origin header found - allowing for direct access');
-    return true; // Allow direct API access without origin
+    return false; 
   }
   
-  const isAllowed = ALLOWED_ORIGINS.includes(origin);
-  console.log(`Origin validation: ${origin} - ${isAllowed ? 'allowed' : 'blocked'}`);
-  
-  return true;
+  return ALLOWED_ORIGINS.includes(origin);
 }
 
-// Add CORS headers to response
+// Add CORS headers to response — only sets origin if it's in the allowlist
 const addCorsHeaders = (response: NextResponse, origin: string | null): NextResponse => {
-  response.headers.set('Access-Control-Allow-Origin', 'https://trailsilvania.com');
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Vary', 'Origin');
+  }
+  // If origin is not allowed, no Access-Control-Allow-Origin header is set,
+  // so the browser will block the response.
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
   
@@ -64,9 +63,11 @@ const addCorsHeaders = (response: NextResponse, origin: string | null): NextResp
 export async function OPTIONS(request: Request): Promise<NextResponse> {
   const origin = request.headers.get('origin');
   
-  // Create response with 200 status
-  const response = new NextResponse(null, { status: 200 });
+  if (!validateOrigin(request)) {
+    return new NextResponse(null, { status: 403 });
+  }
   
+  const response = new NextResponse(null, { status: 204 });
   return addCorsHeaders(response, origin);
 }
 
@@ -106,34 +107,39 @@ export async function GET(request: Request): Promise<NextResponse> {
       if (key.match(/^\d+-readings$/) && typeof value === 'object' && value !== null) {
         const trailNumber = key.split('-')[0];
         
-        // Get all readings from this trail
-        const readings = value as Record<string, Reading>;
-        const readingEntries = Object.entries(readings);
-        
-        if (readingEntries.length > 0) {
-          // Convert to TrailReading objects and sort by timestamp (newest first)
-          const trailReadings: TrailReading[] = readingEntries
-            .map(([readingId, reading]) => ({
+        try {
+          // Get all readings from this trail
+          const readings = value as Record<string, Reading>;
+          const readingEntries = Object.entries(readings);
+          
+          if (readingEntries.length > 0) {
+            // Convert to TrailReading objects and sort by timestamp (newest first)
+            const trailReadings: TrailReading[] = readingEntries
+              .map(([readingId, reading]) => ({
+                trailId: trailNumber,
+                moisture: Number(reading.moisture) || 0,
+                timestamp: normalizeTimestamp(reading.timestamp),
+                readingId: readingId
+              }))
+              .sort((a, b) => b.timestamp - a.timestamp);
+            
+            // Get the latest reading
+            const latestReading = trailReadings[0];
+            
+            // Filter readings from the last 7 days
+            const last7DaysReadings = trailReadings.filter(
+              reading => reading.timestamp >= sevenDaysAgo
+            );
+            
+            trailsData.push({
               trailId: trailNumber,
-              moisture: reading.moisture,
-              timestamp: reading.timestamp,
-              readingId: readingId
-            }))
-            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-          
-          // Get the latest reading
-          const latestReading = trailReadings[0];
-          
-          // Filter readings from the last 7 days
-          const last7DaysReadings = trailReadings.filter(
-            reading => reading.timestamp >= sevenDaysAgo
-          );
-          
-          trailsData.push({
-            trailId: trailNumber,
-            latestReading: latestReading,
-            last7Days: last7DaysReadings
-          });
+              latestReading: latestReading,
+              last7Days: last7DaysReadings
+            });
+          }
+        } catch (trailError) {
+          console.error(`Error processing trail ${trailNumber}:`, trailError);
+          // Skip this trail and continue with the rest
         }
       }
     }
@@ -215,7 +221,7 @@ export async function POST(request: Request) {
     // Reference to the specific trail's readings
     const readingsRef = ref(database, `${data.trailId}-readings`);
 
-    // Add new reading to Firebase
+    // Add new reading to Firebase — use serverTimestamp as the single canonical time
     await push(readingsRef, {
       moisture: moisture,
       battery: battery,

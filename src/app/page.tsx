@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Speedometer from "@/app/components/Speedometer";
 import { ref, onValue, DataSnapshot } from "firebase/database";
 import { database } from "@/app/lib/firebaseconfig";
+import { normalizeTimestamp } from "@/app/lib/normalizeTimestamp";
 
 interface Reading {
   moisture: number;
@@ -17,7 +18,7 @@ interface FirebaseReading {
   };
 }
 
-const TRAILS = [{ id: "1", name: "Livada Tech Trail Upper" }];
+const TRAILS = [{ id: "2", name: "Livada Tech Trail Upper" }];
 
 export default function Home() {
   const [trailReadings, setTrailReadings] = useState<{
@@ -31,10 +32,12 @@ export default function Home() {
       return onValue(readingsRef, (snapshot: DataSnapshot) => {
         const data = snapshot.val() as FirebaseReading;
         if (data) {
-          const readingsArray = Object.entries(data).map(([key, reading]) => ({
-            moisture: Number(reading.moisture) || 0,
-            timestamp: reading.timestamp,
-          }));
+          const readingsArray = Object.values(data)
+            .map((reading) => ({
+              moisture: Number(reading.moisture) || 0,
+              timestamp: normalizeTimestamp(reading.timestamp),
+            }))
+            .sort((a, b) => a.timestamp - b.timestamp);
 
           setTrailReadings((prev) => ({
             ...prev,

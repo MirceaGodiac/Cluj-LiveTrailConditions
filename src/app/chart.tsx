@@ -11,6 +11,12 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import annotationPlugin from "chartjs-plugin-annotation";
+import {
+  getConditionColorHex,
+  getCondition,
+  getConditionPalette,
+} from "@/app/lib/conditions";
 
 ChartJS.register(
   CategoryScale,
@@ -19,7 +25,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  annotationPlugin,
 );
 
 type Reading = {
@@ -34,32 +41,12 @@ export default function Graph({
   readings: Reading[];
   timeframe: string;
 }) {
-  console.log(
-    `[Chart] Rendering chart for timeframe ${timeframe} with ${readings.length} readings:`,
-    readings.map((r) => ({
-      moisture: r.moisture,
-      time: new Date(r.timestamp).toLocaleString(),
-    }))
-  );
-
   const moistureValues = readings.map((r) => {
     const value = parseFloat(r.moisture.toString());
     return isNaN(value) ? 0 : value;
   });
 
-  console.log("Processed moisture values:", moistureValues);
-
-  // Function to get color based on moisture value
-  const getConditionColor = (val: number) => {
-    if (val <= 300) return "#f43f5e"; // rose-500 - Slippery
-    if (val <= 330) return "#0ea5e9"; // sky-500 - Wet/Damp
-    if (val <= 350) return "#10b981"; // emerald-500 - Hero Dirt
-    if (val <= 400) return "#fbbf24"; // amber-400 - Dry
-    return "#fb923c"; // orange-400 - Dusty
-  };
-
-  // Create gradient colors for the line based on moisture values
-  const pointColors = moistureValues.map((val) => getConditionColor(val));
+  const pointColors = moistureValues.map((val) => getConditionColorHex(val));
   const pointBorderColors = pointColors.map((color) => color);
 
   const formatTimestamp = (timestamp: number) => {
@@ -72,6 +59,44 @@ export default function Graph({
 
   // Create a simple gradient background that doesn't cause issues
   const gradientBackground = "rgba(6, 182, 212, 0.2)";
+
+  // Derive annotation bands from the shared condition palette
+  const conditionBands = getConditionPalette().map((c) => {
+    const match = c.rangeLabel.match(/([<>]?)\s*(\d+)(?:\s*-\s*(\d+))?/);
+    let bandMin = 200;
+    let bandMax = 500;
+    if (match) {
+      if (match[1] === "<") {
+        bandMin = 200;
+        bandMax = Number(match[2]);
+      } else if (match[1] === ">") {
+        bandMin = Number(match[2]);
+        bandMax = 500;
+      } else {
+        bandMin = Number(match[2]);
+        bandMax = Number(match[3] ?? match[2]);
+      }
+    }
+    const hex = c.hexColor;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return {
+      yMin: bandMin,
+      yMax: bandMax,
+      color: `rgba(${r}, ${g}, ${b}, 0.1)`,
+    };
+  });
+
+  // Compute dynamic y-axis range: accommodate values outside default 200-500
+  const positiveValues = moistureValues.filter((v) => v > 0);
+  const dataMin = positiveValues.length > 0 ? Math.min(...positiveValues) : 200;
+  const dataMax = positiveValues.length > 0 ? Math.max(...positiveValues) : 500;
+  const yAxisMin = Math.min(200, Math.floor(dataMin / 50) * 50);
+  const yAxisMax = Math.max(500, Math.ceil(dataMax / 50) * 50);
+
+  // Flag if values fall outside the standard 200-500 range
+  const hasOutOfRange = positiveValues.some((v) => v < 200 || v > 500);
 
   const data = {
     labels: readings.map((r) => formatTimestamp(r.timestamp)),
@@ -99,7 +124,7 @@ export default function Graph({
             const startValue = ctx.p0.parsed.y;
             const endValue = ctx.p1.parsed.y;
             const avgValue = (startValue + endValue) / 2;
-            return getConditionColor(avgValue);
+            return getConditionColorHex(avgValue);
           },
         },
       },
@@ -125,14 +150,9 @@ export default function Graph({
         callbacks: {
           label: function (context: { parsed: { y: number } }) {
             const value = context.parsed.y;
-            let condition = "Unknown";
-            if (value <= 300) condition = "Slippery";
-            else if (value <= 330) condition = "Wet / Damp";
-            else if (value <= 350) condition = "Hero Dirt";
-            else if (value <= 400) condition = "Dry";
-            else condition = "Dusty";
+            const condition = getCondition(value);
 
-            return `Moisture: ${value} (${condition})`;
+            return `Moisture: ${value} (${condition.name})`;
           },
         },
       },
@@ -150,48 +170,13 @@ export default function Graph({
       },
       y: {
         grid: {
-          color: "rgba(71, 85, 105, 0.3)", // slate-600 with transparency
+          color: "rgba(71, 85, 105, 0.3)",
         },
         ticks: {
-          color: "#94a3b8", // slate-400
+          color: "#94a3b8",
         },
-        // Add colored background zones for different conditions
-        plugins: {
-          annotation: {
-            annotations: {
-              slippery: {
-                type: "box",
-                yMin: 0,
-                yMax: 300,
-                backgroundColor: "rgba(244, 63, 94, 0.1)", // rose-500 with transparency
-              },
-              wetDamp: {
-                type: "box",
-                yMin: 300,
-                yMax: 330,
-                backgroundColor: "rgba(14, 165, 233, 0.1)", // sky-500 with transparency
-              },
-              heroDirt: {
-                type: "box",
-                yMin: 330,
-                yMax: 350,
-                backgroundColor: "rgba(16, 185, 129, 0.1)", // emerald-500 with transparency
-              },
-              dry: {
-                type: "box",
-                yMin: 350,
-                yMax: 400,
-                backgroundColor: "rgba(251, 191, 36, 0.1)", // amber-400 with transparency
-              },
-              dusty: {
-                type: "box",
-                yMin: 400,
-                yMax: 500,
-                backgroundColor: "rgba(251, 146, 60, 0.1)", // orange-400 with transparency
-              },
-            },
-          },
-        },
+        min: yAxisMin,
+        max: yAxisMax,
       },
     },
     interaction: {
@@ -202,6 +187,38 @@ export default function Graph({
       point: {
         hoverBackgroundColor: "#ffffff",
         hoverBorderWidth: 3,
+      },
+    },
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (options as any).plugins = {
+    ...options.plugins,
+    annotation: {
+      annotations: {
+        ...conditionBands.reduce(
+          (acc, zone, idx) => {
+            acc[`zone-${idx}`] = {
+              type: "box",
+              yMin: zone.yMin,
+              yMax: zone.yMax,
+              backgroundColor: zone.color,
+            };
+            return acc;
+          },
+          {} as Record<string, unknown>,
+        ),
+        ...(hasOutOfRange
+          ? {
+              outOfRangeLabel: {
+                type: "label",
+                content: "⚠ Values outside standard range",
+                position: { x: "end", y: "start" },
+                color: "#fbbf24",
+                font: { size: 10 },
+              },
+            }
+          : {}),
       },
     },
   };

@@ -2,13 +2,12 @@
 
 import { useState, useMemo } from "react";
 import Graph from "@/app/chart";
+import { getCondition, getConditionPalette } from "@/app/lib/conditions";
 
 interface SpeedometerProps {
   value: number;
   trailName: string;
   readings: Array<{ moisture: number; timestamp: number }>;
-
-  initialTimestamp?: number; // Add this new prop
 }
 
 const TIMEFRAMES = {
@@ -17,47 +16,21 @@ const TIMEFRAMES = {
   "Last 7 days": 7 * 24 * 60 * 60 * 1000,
 };
 
-const OFFLINE_THRESHOLD = 3 * 61 * 60 * 1000; // 12 hours in milliseconds
-const MOVING_AVERAGE_WINDOWS = [3, 5, 7, 9, 11];
-
-const calculateMovingAverage = (
-  readings: Array<{ moisture: number; timestamp: number }>,
-  windowSize: number
-) => {
-  const result = [];
-  for (let i = windowSize - 1; i < readings.length; i++) {
-    const window = readings.slice(i - windowSize + 1, i + 1);
-    const avgMoisture =
-      window.reduce((sum, r) => sum + r.moisture, 0) / windowSize;
-    result.push({
-      moisture: avgMoisture,
-      timestamp: readings[i].timestamp,
-    });
-  }
-  return result;
-};
+const OFFLINE_THRESHOLD = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
 
 export default function Speedometer({
   value: initialValue,
   trailName,
   readings,
-  initialTimestamp = Date.now(), // Default to current time if not provided
 }: SpeedometerProps) {
   const [selectedTimeframe, setSelectedTimeframe] =
     useState<keyof typeof TIMEFRAMES>("Last 24h");
-  const [maWindow, setMaWindow] = useState<number>(3);
 
   const filteredReadings = useMemo(() => {
     const now = Date.now();
     const timeframeMs = TIMEFRAMES[selectedTimeframe];
-    const filtered = readings.filter(
-      (reading) => now - reading.timestamp <= timeframeMs
-    );
-    console.log(
-      `[Speedometer] Filtered readings for ${selectedTimeframe}:`,
-      filtered
-    );
-    return filtered;
+    // readings arrive pre-sorted ascending from the page; just filter
+    return readings.filter((reading) => now - reading.timestamp <= timeframeMs);
   }, [readings, selectedTimeframe]);
 
   const latestValue = useMemo(() => {
@@ -65,24 +38,6 @@ export default function Speedometer({
       ? filteredReadings[filteredReadings.length - 1].moisture
       : initialValue;
   }, [filteredReadings, initialValue]);
-
-  const getCondition = (val: number) => {
-    if (val <= 300) return { name: "Slippery", color: "bg-rose-500" };
-    if (val <= 330)
-      return {
-        name: "Wet / Damp",
-        color: "bg-sky-500",
-        warning: "Some parts may still be slippery",
-      };
-    if (val <= 350)
-      return {
-        name: "Hero Dirt",
-        color: "bg-emerald-500",
-        warning: "Lower section of trails may still be slippery",
-      };
-    if (val <= 400) return { name: "Dry", color: "bg-amber-400" };
-    return { name: "Dusty", color: "bg-orange-400" };
-  };
 
   const condition = getCondition(latestValue);
 
@@ -109,7 +64,7 @@ export default function Speedometer({
     }
     const lastReading = filteredReadings[filteredReadings.length - 1];
     return Date.now() - lastReading.timestamp > OFFLINE_THRESHOLD;
-  }, [filteredReadings, initialTimestamp]);
+  }, [filteredReadings]);
 
   return (
     <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-700/50 p-4 sm:p-6 transition-all duration-300 hover:bg-slate-800/70">
@@ -142,12 +97,12 @@ export default function Speedometer({
 
             <div className="flex flex-col space-y-4">
               <div
-                className={`${condition.color} text-slate-900 text-3xl sm:text-5xl font-bold px-6 py-4 rounded-xl text-center shadow-lg transform transition-all duration-300 hover:scale-[1.02] cursor-default`}
+                className={`${condition.tailwindColor} text-slate-900 text-3xl sm:text-5xl font-bold px-6 py-4 rounded-xl text-center shadow-lg transform transition-all duration-300 hover:scale-[1.02] cursor-default`}
               >
                 {condition.name}
               </div>
 
-              {"warning" in condition && (
+              {condition.warning && (
                 <div className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-200 px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-3 animate-pulse">
                   <span className="text-xl">⚠️</span>
                   {condition.warning}
@@ -174,9 +129,8 @@ export default function Speedometer({
                     Last Updated{" "}
                     {filteredReadings.length > 0
                       ? new Date(
-                          filteredReadings[
-                            filteredReadings.length - 1
-                          ].timestamp
+                          filteredReadings[filteredReadings.length - 1]
+                            .timestamp,
                         ).toLocaleTimeString()
                       : "N/A"}
                   </div>
@@ -186,7 +140,7 @@ export default function Speedometer({
                       <span className="text-slate-300 font-medium">
                         {getNextUpdateTime(
                           filteredReadings[filteredReadings.length - 1]
-                            .timestamp
+                            .timestamp,
                         )}
                       </span>
                     </div>
@@ -203,42 +157,20 @@ export default function Speedometer({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              {[
-                {
-                  name: "Slippery",
-                  color: "bg-rose-500",
-                  range: "< 300",
-                },
-                {
-                  name: "Wet / Damp",
-                  range: "300 - 330",
-                  color: "bg-sky-500",
-                },
-                {
-                  name: "Hero Dirt",
-                  range: "330 - 350",
-                  color: "bg-emerald-500",
-                },
-                {
-                  name: "Dry",
-                  range: "350 - 400",
-                  color: "bg-amber-400",
-                },
-                {
-                  name: "Dusty",
-                  range: "> 400",
-                  color: "bg-orange-400",
-                },
-              ].map((item) => (
+              {getConditionPalette().map((item) => (
                 <div
                   key={item.name}
                   className="bg-slate-800/50 rounded-lg p-3 text-center transition-all duration-300 hover:bg-slate-800/70 cursor-default"
                 >
-                  <div className={`h-2 ${item.color} rounded-full mb-2`} />
+                  <div
+                    className={`h-2 ${item.tailwindColor} rounded-full mb-2`}
+                  />
                   <div className="font-medium text-slate-300 text-xs">
                     {item.name}
                   </div>
-                  <div className="text-[10px] text-slate-400">{item.range}</div>
+                  <div className="text-[10px] text-slate-400">
+                    {item.rangeLabel}
+                  </div>
                 </div>
               ))}
             </div>
