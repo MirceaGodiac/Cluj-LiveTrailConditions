@@ -105,7 +105,7 @@ export default function Home() {
             <div className="mt-6 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 sm:text-sm">
               <div className="hud-panel px-4 py-3">
                 <span className="hud-label">Sensor Cadence</span>
-                <p className="mt-1 text-slate-100">Every 3 hours</p>
+                <p className="mt-1 text-slate-100">Every 6 hours</p>
               </div>
               <div className="hud-panel px-4 py-3">
                 <span className="hud-label">Last Network Sync</span>
